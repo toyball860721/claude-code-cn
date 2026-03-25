@@ -1,0 +1,67 @@
+{
+  "name": "版本发布工作流",
+  "description": "从代码冻结到发布的完整流程，包含 CHANGELOG 生成、版本号更新和发布",
+  "version": "1.0",
+  "triggers": ["manual"],
+  "params": {
+    "version": "新版本号，如 v1.2.0",
+    "release_type": "major | minor | patch"
+  },
+  "steps": [
+    {
+      "id": "version_bump",
+      "name": "更新版本号",
+      "action": "update_version",
+      "params": {
+        "version": "{{params.version}}",
+        "files": ["package.json", "pyproject.toml", "setup.cfg"]
+      }
+    },
+    {
+      "id": "generate_changelog",
+      "name": "生成 CHANGELOG",
+      "skill": "changelog-gen",
+      "params": {
+        "version": "{{params.version}}",
+        "since": "上一个 tag"
+      }
+    },
+    {
+      "id": "update_readme",
+      "name": "更新 README 版本徽章",
+      "skill": "readme-writer",
+      "params": {
+        "action": "update_badges",
+        "version": "{{params.version}}"
+      }
+    },
+    {
+      "id": "create_tag",
+      "name": "创建 Git Tag",
+      "action": "git_tag",
+      "params": {
+        "tag": "{{params.version}}",
+        "message": "Release {{params.version}}"
+      }
+    },
+    {
+      "id": "publish",
+      "name": "发布到包管理器",
+      "action": "publish",
+      "params": {
+        "registry": "auto-detect",
+        "dry_run": false
+      }
+    },
+    {
+      "id": "github_release",
+      "name": "创建 GitHub Release",
+      "action": "github_release",
+      "params": {
+        "tag": "{{params.version}}",
+        "body": "{{steps.generate_changelog.output}}",
+        "draft": false
+      }
+    }
+  ]
+}

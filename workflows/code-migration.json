@@ -1,0 +1,74 @@
+{
+  "name": "代码迁移工作流",
+  "description": "辅助技术栈迁移或框架升级，包含兼容性分析、代码转换和验证",
+  "version": "1.0",
+  "triggers": ["manual"],
+  "params": {
+    "from": "当前技术/版本，如 Vue 2、Python 3.8",
+    "to": "目标技术/版本，如 Vue 3、Python 3.12",
+    "scope": "迁移范围（全量 / 指定目录）"
+  },
+  "steps": [
+    {
+      "id": "impact_analysis",
+      "name": "影响范围分析",
+      "action": "analyze_migration",
+      "params": {
+        "from": "{{params.from}}",
+        "to": "{{params.to}}",
+        "output": "breaking_changes 列表 + 受影响文件"
+      }
+    },
+    {
+      "id": "backup_tests",
+      "name": "确保测试覆盖",
+      "skill": "test-writer",
+      "params": {
+        "purpose": "为迁移前的行为建立基准测试"
+      }
+    },
+    {
+      "id": "auto_transform",
+      "name": "自动代码转换",
+      "action": "code_transform",
+      "input": "{{steps.impact_analysis.output.affected_files}}",
+      "params": {
+        "rules": "{{steps.impact_analysis.output.migration_rules}}",
+        "dry_run": false
+      }
+    },
+    {
+      "id": "manual_review",
+      "name": "人工审查清单",
+      "skill": "code-review-cn",
+      "input": "{{steps.auto_transform.output.diff}}",
+      "params": {
+        "focus": "迁移正确性、废弃 API 替换、类型兼容"
+      }
+    },
+    {
+      "id": "run_tests",
+      "name": "运行全量测试",
+      "action": "run_tests",
+      "params": {
+        "suite": "all",
+        "compare_with_baseline": true
+      }
+    },
+    {
+      "id": "migration_report",
+      "name": "生成迁移报告",
+      "action": "render_report",
+      "params": {
+        "template": "migration-report",
+        "data": {
+          "from": "{{params.from}}",
+          "to": "{{params.to}}",
+          "files_changed": "{{steps.auto_transform.output.stats}}",
+          "test_results": "{{steps.run_tests.output}}",
+          "manual_items": "{{steps.manual_review.output.action_items}}"
+        }
+      }
+    }
+  ]
+}

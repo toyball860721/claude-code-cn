@@ -1,0 +1,59 @@
+{
+  "name": "项目初始化工作流",
+  "description": "新项目从零开始的完整初始化流程，一键生成所有基础配置",
+  "version": "1.0",
+  "triggers": ["manual"],
+  "params": {
+    "project_name": "项目名称",
+    "tech_stack": "技术栈，如 Python/FastAPI、Node.js/Next.js",
+    "description": "项目一句话描述"
+  },
+  "steps": [
+    {
+      "id": "scaffold",
+      "name": "生成项目骨架",
+      "action": "create_project",
+      "params": {
+        "name": "{{params.project_name}}",
+        "stack": "{{params.tech_stack}}"
+      }
+    },
+    {
+      "id": "readme",
+      "name": "生成 README",
+      "skill": "readme-writer",
+      "params": {
+        "name": "{{params.project_name}}",
+        "tagline": "{{params.description}}",
+        "tech_stack": "{{params.tech_stack}}"
+      }
+    },
+    {
+      "id": "dockerfile",
+      "name": "生成 Docker 配置",
+      "skill": "docker-helper",
+      "params": {
+        "tech_stack": "{{params.tech_stack}}",
+        "environment": "both"
+      }
+    },
+    {
+      "id": "git_init",
+      "name": "初始化 Git 仓库",
+      "action": "git_init",
+      "params": {
+        "initial_commit": true,
+        "gitignore": "auto"
+      }
+    },
+    {
+      "id": "ci_config",
+      "name": "生成 CI 配置",
+      "action": "generate",
+      "params": {
+        "template": "github-actions",
+        "stack": "{{params.tech_stack}}"
+      }
+    }
+  ]
+}

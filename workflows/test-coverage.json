@@ -1,0 +1,58 @@
+{
+  "name": "测试补全工作流",
+  "description": "扫描项目测试覆盖率，自动为未覆盖的代码生成测试",
+  "version": "1.0",
+  "triggers": ["manual", "schedule.weekly"],
+  "params": {
+    "coverage_threshold": "目标覆盖率百分比，如 80",
+    "test_framework": "pytest | jest | vitest"
+  },
+  "steps": [
+    {
+      "id": "run_coverage",
+      "name": "运行覆盖率检测",
+      "action": "run_tests",
+      "params": {
+        "coverage": true,
+        "report_format": "json"
+      }
+    },
+    {
+      "id": "find_gaps",
+      "name": "识别覆盖率缺口",
+      "action": "analyze_coverage",
+      "input": "{{steps.run_coverage.output.coverage_report}}",
+      "params": {
+        "threshold": "{{params.coverage_threshold}}",
+        "sort_by": "uncovered_lines_desc"
+      }
+    },
+    {
+      "id": "generate_tests",
+      "name": "批量生成测试",
+      "skill": "test-writer",
+      "input": "{{steps.find_gaps.output.uncovered_files}}",
+      "params": {
+        "framework": "{{params.test_framework}}",
+        "batch": true
+      }
+    },
+    {
+      "id": "validate_tests",
+      "name": "运行新测试验证",
+      "action": "run_tests",
+      "params": {
+        "files": "{{steps.generate_tests.output.test_files}}"
+      }
+    },
+    {
+      "id": "report",
+      "name": "生成覆盖率提升报告",
+      "action": "compare_coverage",
+      "params": {
+        "before": "{{steps.run_coverage.output}}",
+        "after": "{{steps.validate_tests.output}}"
+      }
+    }
+  ]
+}

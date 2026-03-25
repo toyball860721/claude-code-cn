@@ -1,0 +1,54 @@
+{
+  "name": "Bug 修复工作流",
+  "description": "从 Issue 报告到修复上线的完整 Bug 修复流程",
+  "version": "1.0",
+  "triggers": ["issue.labeled.bug", "manual"],
+  "params": {
+    "issue_url": "Bug Issue 链接",
+    "error_info": "错误信息或堆栈"
+  },
+  "steps": [
+    {
+      "id": "locate_bug",
+      "name": "定位 Bug 根因",
+      "skill": "bug-hunter",
+      "params": {
+        "error": "{{params.error_info}}",
+        "repo_context": true
+      }
+    },
+    {
+      "id": "write_fix",
+      "name": "编写修复代码",
+      "action": "code_edit",
+      "input": "{{steps.locate_bug.output.fix_suggestion}}"
+    },
+    {
+      "id": "write_test",
+      "name": "编写回归测试",
+      "skill": "test-writer",
+      "params": {
+        "purpose": "验证 Bug 已修复且不会回归",
+        "test_the_fix": "{{steps.write_fix.output}}"
+      }
+    },
+    {
+      "id": "run_tests",
+      "name": "运行全量测试",
+      "action": "run_tests",
+      "params": {
+        "suite": "all"
+      }
+    },
+    {
+      "id": "create_pr",
+      "name": "创建修复 PR",
+      "action": "github_pr",
+      "params": {
+        "title": "fix: {{steps.locate_bug.output.summary}}",
+        "body": "关闭 {{params.issue_url}}\n\n## 根因\n{{steps.locate_bug.output.root_cause}}\n\n## 修复\n{{steps.locate_bug.output.fix_description}}",
+        "labels": ["bug", "auto-fix"]
+      }
+    }
+  ]
+}

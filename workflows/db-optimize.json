@@ -1,0 +1,67 @@
+{
+  "name": "数据库优化工作流",
+  "description": "分析慢查询日志，批量优化 SQL 并生成索引建议报告",
+  "version": "1.0",
+  "triggers": ["manual", "schedule.daily"],
+  "params": {
+    "database": "MySQL | PostgreSQL",
+    "slow_log_path": "慢查询日志路径或直接输入 SQL",
+    "threshold_ms": "慢查询阈值（毫秒）"
+  },
+  "steps": [
+    {
+      "id": "parse_slow_log",
+      "name": "解析慢查询日志",
+      "action": "parse_log",
+      "params": {
+        "path": "{{params.slow_log_path}}",
+        "threshold_ms": "{{params.threshold_ms}}",
+        "group_by": "query_pattern"
+      }
+    },
+    {
+      "id": "rank_queries",
+      "name": "按影响排序",
+      "action": "sort",
+      "input": "{{steps.parse_slow_log.output}}",
+      "params": {
+        "by": "total_time_desc",
+        "limit": 20
+      }
+    },
+    {
+      "id": "optimize_each",
+      "name": "逐条优化 SQL",
+      "skill": "sql-optimizer",
+      "input": "{{steps.rank_queries.output}}",
+      "params": {
+        "database": "{{params.database}}",
+        "batch": true,
+        "include_explain": true
+      }
+    },
+    {
+      "id": "generate_migrations",
+      "name": "生成索引迁移脚本",
+      "action": "generate_sql",
+      "input": "{{steps.optimize_each.output.index_suggestions}}",
+      "params": {
+        "format": "migration",
+        "reversible": true
+      }
+    },
+    {
+      "id": "report",
+      "name": "生成优化报告",
+      "action": "render_report",
+      "params": {
+        "template": "sql-optimization-report",
+        "data": {
+          "queries_analyzed": "{{steps.rank_queries.output.count}}",
+          "optimizations": "{{steps.optimize_each.output}}",
+          "migrations": "{{steps.generate_migrations.output}}"
+        }
+      }
+    }
+  ]
+}

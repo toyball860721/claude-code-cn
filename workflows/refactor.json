@@ -1,0 +1,62 @@
+{
+  "name": "代码重构工作流",
+  "description": "安全的代码重构流程：分析 → 测试保护 → 重构 → 验证",
+  "version": "1.0",
+  "triggers": ["manual"],
+  "params": {
+    "target_files": "需要重构的文件或目录",
+    "refactor_goal": "重构目标描述"
+  },
+  "steps": [
+    {
+      "id": "analyze",
+      "name": "代码坏味道分析",
+      "skill": "refactor-advisor",
+      "params": {
+        "target": "{{params.target_files}}",
+        "goal": "{{params.refactor_goal}}"
+      }
+    },
+    {
+      "id": "ensure_tests",
+      "name": "确保测试覆盖",
+      "skill": "test-writer",
+      "params": {
+        "target": "{{params.target_files}}",
+        "purpose": "为重构建立安全网，覆盖当前行为"
+      }
+    },
+    {
+      "id": "run_tests_before",
+      "name": "重构前运行测试",
+      "action": "run_tests",
+      "params": {
+        "save_snapshot": true
+      }
+    },
+    {
+      "id": "apply_refactor",
+      "name": "执行重构",
+      "action": "apply_changes",
+      "input": "{{steps.analyze.output.refactored_code}}",
+      "params": {
+        "step_by_step": true,
+        "commit_each_step": true
+      }
+    },
+    {
+      "id": "run_tests_after",
+      "name": "重构后运行测试",
+      "action": "run_tests",
+      "params": {
+        "compare_with": "{{steps.run_tests_before.output}}"
+      }
+    },
+    {
+      "id": "review",
+      "name": "重构结果审查",
+      "skill": "code-review-cn",
+      "input": "{{steps.apply_refactor.output.diff}}"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "安全审计工作流",
+  "description": "对项目进行全面的安全扫描，覆盖代码、依赖、配置和 Docker 镜像",
+  "version": "1.0",
+  "triggers": ["manual", "schedule.weekly"],
+  "steps": [
+    {
+      "id": "dependency_audit",
+      "name": "依赖漏洞扫描",
+      "action": "audit_deps",
+      "params": {
+        "tools": ["npm audit", "pip-audit", "trivy"],
+        "severity": "medium+"
+      }
+    },
+    {
+      "id": "code_scan",
+      "name": "代码安全扫描",
+      "skill": "bug-hunter",
+      "params": {
+        "focus": "security",
+        "patterns": ["SQL注入", "XSS", "CSRF", "硬编码密钥", "路径遍历", "命令注入"]
+      }
+    },
+    {
+      "id": "config_check",
+      "name": "配置安全检查",
+      "action": "check_configs",
+      "params": {
+        "files": [".env", "docker-compose.yml", "nginx.conf"],
+        "rules": ["no_default_passwords", "no_debug_mode", "https_only"]
+      }
+    },
+    {
+      "id": "docker_scan",
+      "name": "Docker 镜像扫描",
+      "action": "scan_image",
+      "params": {
+        "tool": "trivy",
+        "severity": "HIGH,CRITICAL"
+      }
+    },
+    {
+      "id": "generate_report",
+      "name": "生成安全审计报告",
+      "action": "render_report",
+      "params": {
+        "sections": [
+          {"title": "依赖漏洞", "data": "{{steps.dependency_audit.output}}"},
+          {"title": "代码漏洞", "data": "{{steps.code_scan.output}}"},
+          {"title": "配置风险", "data": "{{steps.config_check.output}}"},
+          {"title": "镜像漏洞", "data": "{{steps.docker_scan.output}}"}
+        ],
+        "format": "markdown"
+      }
+    }
+  ]
+}

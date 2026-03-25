@@ -1,0 +1,59 @@
+{
+  "name": "API 文档同步工作流",
+  "description": "代码变更后自动同步更新 API 文档，保持文档与代码一致",
+  "version": "1.0",
+  "triggers": ["push.main", "manual"],
+  "params": {
+    "source_dir": "API 路由/控制器所在目录",
+    "doc_format": "markdown | openapi"
+  },
+  "steps": [
+    {
+      "id": "scan_routes",
+      "name": "扫描 API 路由",
+      "action": "scan_files",
+      "params": {
+        "directory": "{{params.source_dir}}",
+        "pattern": "路由定义文件"
+      }
+    },
+    {
+      "id": "generate_docs",
+      "name": "生成 API 文档",
+      "skill": "api-doc-gen",
+      "input": "{{steps.scan_routes.output}}",
+      "params": {
+        "format": "{{params.doc_format}}",
+        "language": "zh-CN"
+      }
+    },
+    {
+      "id": "diff_check",
+      "name": "对比已有文档",
+      "action": "diff",
+      "params": {
+        "old": "docs/api.md",
+        "new": "{{steps.generate_docs.output}}"
+      }
+    },
+    {
+      "id": "update_docs",
+      "name": "更新文档文件",
+      "action": "write_file",
+      "condition": "{{steps.diff_check.output.has_changes}}",
+      "params": {
+        "path": "docs/api.md",
+        "content": "{{steps.generate_docs.output}}"
+      }
+    },
+    {
+      "id": "commit",
+      "name": "提交文档变更",
+      "action": "git_commit",
+      "condition": "{{steps.diff_check.output.has_changes}}",
+      "params": {
+        "message": "docs: 自动更新 API 文档"
+      }
+    }
+  ]
+}

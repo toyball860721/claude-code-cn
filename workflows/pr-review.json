@@ -1,0 +1,54 @@
+{
+  "name": "PR 审查工作流",
+  "description": "Pull Request 提交后的自动化审查流程，涵盖代码质量、安全、测试覆盖",
+  "version": "1.0",
+  "triggers": ["pull_request.opened", "pull_request.synchronize"],
+  "steps": [
+    {
+      "id": "diff_analysis",
+      "name": "获取变更差异",
+      "action": "git_diff",
+      "params": {
+        "base": "{{base_branch}}",
+        "head": "{{head_branch}}"
+      }
+    },
+    {
+      "id": "code_review",
+      "name": "中文代码审查",
+      "skill": "code-review-cn",
+      "input": "{{steps.diff_analysis.output}}",
+      "params": {
+        "language": "auto-detect",
+        "severity_threshold": "warning"
+      }
+    },
+    {
+      "id": "test_check",
+      "name": "测试覆盖检查",
+      "action": "evaluate",
+      "params": {
+        "condition": "变更文件是否有对应测试文件",
+        "on_missing": "使用 test-writer skill 生成建议测试"
+      }
+    },
+    {
+      "id": "security_scan",
+      "name": "安全漏洞扫描",
+      "skill": "bug-hunter",
+      "input": "{{steps.diff_analysis.output}}",
+      "params": {
+        "focus": "security"
+      }
+    },
+    {
+      "id": "post_comment",
+      "name": "发布审查评论",
+      "action": "github_comment",
+      "params": {
+        "pr_number": "{{trigger.pr_number}}",
+        "body": "## 🔍 自动审查报告\n\n{{steps.code_review.output}}\n\n{{steps.security_scan.output}}"
+      }
+    }
+  ]
+}
